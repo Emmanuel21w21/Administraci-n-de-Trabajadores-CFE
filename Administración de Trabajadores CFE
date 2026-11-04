@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reto 3: Sistema de Credencialización Web (CFE)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QRCode Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+        }
+    </style>
+</head>
+<body class="bg-emerald-50/40 text-slate-800 font-sans antialiased">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <div class="min-h-screen flex flex-col md:flex-row">
+
+        <!-- Sidebar / Navigation -->
+        <aside class="bg-emerald-950 text-white w-full md:w-64 p-6 flex flex-col justify-between shadow-xl no-print border-r border-emerald-900">
+            <div>
+                <div class="flex items-center space-x-3 mb-8">
+                    <div class="bg-emerald-600 p-2.5 rounded-xl shadow-md">
+                        <i class="fa-solid fa-id-card text-xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base font-bold tracking-wide">CredencialWeb</h1>
+                        <p class="text-[10px] text-emerald-300">Sistema CFE - Reto 3</p>
+                    </div>
+                </div>
+
+                <nav class="space-y-1.5">
+                    <button onclick="switchTab('trabajadores')" id="nav-trabajadores" class="w-full flex items-center space-x-3 py-2.5 px-4 rounded-xl bg-emerald-700 text-white shadow-lg shadow-emerald-900/40 transition text-sm font-semibold">
+                        <i class="fa-solid fa-users w-5"></i>
+                        <span>Trabajadores</span>
+                    </button>
+                    <button onclick="switchTab('credenciales')" id="nav-credenciales" class="w-full flex items-center space-x-3 py-2.5 px-4 rounded-xl text-emerald-100 hover:bg-emerald-900 transition text-sm font-medium">
+                        <i class="fa-solid fa-address-card w-5"></i>
+                        <span>Credenciales</span>
+                    </button>
+                    <button onclick="switchTab('escaner')" id="nav-escaner" class="w-full flex items-center space-x-3 py-2.5 px-4 rounded-xl text-emerald-100 hover:bg-emerald-900 transition text-sm font-medium">
+                        <i class="fa-solid fa-qrcode w-5"></i>
+                        <span>Escáner QR / Público</span>
+                    </button>
+                    <button onclick="switchTab('notificaciones')" id="nav-notificaciones" class="w-full flex items-center space-x-3 py-2.5 px-4 rounded-xl text-emerald-100 hover:bg-emerald-900 transition text-sm font-medium">
+                        <i class="fa-solid fa-envelope-circle-check w-5"></i>
+                        <span>Notificaciones Correo</span>
+                    </button>
+                    <button onclick="switchTab('reportes')" id="nav-reportes" class="w-full flex items-center space-x-3 py-2.5 px-4 rounded-xl text-emerald-100 hover:bg-emerald-900 transition text-sm font-medium">
+                        <i class="fa-solid fa-chart-pie w-5"></i>
+                        <span>Reportes</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div class="pt-6 border-t border-emerald-900 space-y-3">
+                <div class="flex items-center space-x-3 bg-emerald-900/60 p-3 rounded-xl border border-emerald-800">
+                    <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                    <div class="text-xs">
+                        <p class="font-bold text-white">Admin Autorizado</p>
+                        <p class="text-[10px] text-emerald-300">Protección CFE Activa</p>
+                    </div>
+                </div>
+                <button onclick="clearAllData()" class="w-full py-2 bg-emerald-900 hover:bg-rose-900/60 text-emerald-200 hover:text-rose-200 text-xs font-semibold rounded-lg transition border border-emerald-800">
+                    Limpiar Todos los Datos
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+
+            <!-- Top Header -->
+            <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 gap-4 no-print">
+                <div>
+                    <h2 id="header-title" class="text-xl font-extrabold text-emerald-950">Administración de Trabajadores</h2>
+                    <p class="text-xs text-slate-500">Gestión de personal, registros y control de vigencias institucionales CFE.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5">
+                        <i class="fa-solid fa-database text-emerald-600"></i>
+                        <span id="stat-total">0</span><span>Registros</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- CONTAINER VIEWS -->
+            <div id="views-container">
+
+                <!-- VIEW 1: TRABAJADORES (CRUD) -->
+                <section id="view-trabajadores" class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto flex-1">
+                            <div class="relative flex-1 max-w-md">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-emerald-500 text-xs"></i>
+                                <input type="text" id="search-input" onkeyup="renderTable()" placeholder="Buscar por nombre, CURP, teléfono, tarjeta o área..." class="w-full pl-9 pr-4 py-2 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                            </div>
+                            <select id="filter-status" onchange="renderTable()" class="bg-emerald-50/50 border border-emerald-200 rounded-xl px-3 py-2 text-sm text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                                <option value="todos">Todos los estados</option>
+                                <option value="Vigente">Vigentes</option>
+                                <option value="Inactiva">Inactivas</option>
+                                <option value="Vencida">Vencidas</option>
+                            </select>
+                        </div>
+                        <button onclick="openModal()" class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-emerald-700/20 flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>Nuevo Trabajador</span>
+                        </button>
+                    </div>
+
+                    <!-- Table Data -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-emerald-900 text-white text-xs uppercase font-bold border-b border-emerald-950">
+                                        <th class="p-4">Trabajador</th>
+                                        <th class="p-4">Identificación / Teléfono</th>
+                                        <th class="p-4">No. / Tarjeta</th>
+                                        <th class="p-4">Área / Cargo</th>
+                                        <th class="p-4">Vigencia (Inicio - Fin)</th>
+                                        <th class="p-4">Estado</th>
+                                        <th class="p-4 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="workers-tbody" class="divide-y divide-emerald-50 text-sm">
+                                    <!-- Injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 2: CREDENCIALES -->
+                <section id="view-credenciales" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 space-y-6">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
+                            <div>
+                                <h3 class="text-lg font-bold text-emerald-950">Diseño y Generación de Credenciales CFE</h3>
+                                <p class="text-xs text-slate-500">Anverso con Área/Cargo y Reverso con información institucional y QR.</p>
+                            </div>
+                            <div class="w-full md:w-72">
+                                <select id="select-credential-worker" onchange="renderDigitalCard()" class="w-full bg-emerald-50/50 border border-emerald-200 rounded-xl px-3 py-2 text-sm font-semibold text-emerald-900">
+                                    <!-- Dynamic options -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Card Anverso & Reverso Display -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
+                            
+                            <!-- ANVERSO -->
+                            <div class="bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-800 text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col justify-between h-72 border border-emerald-500/40">
+                                <div class="absolute top-4 right-4 text-[10px] bg-white/10 backdrop-blur-md px-3 py-1 rounded-full uppercase tracking-widest font-extrabold text-emerald-200">Anverso</div>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center font-black text-sm shadow-inner text-white">CFE</div>
+                                    <div>
+                                        <h4 class="font-black text-sm tracking-wide">COMISIÓN FEDERAL DE ELECTRICIDAD</h4>
+                                        <p class="text-[10px] text-emerald-200">Credencial Oficial de Identificación</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-5">
+                                    <div class="relative">
+                                        <img id="card-front-photo" src="" class="w-24 h-32 object-cover rounded-2xl border-2 border-white/30 shadow-lg bg-emerald-950">
+                                        <span id="card-front-badge" class="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase shadow">Vigente</span>
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <div>
+                                            <span class="text-[9px] uppercase font-bold text-emerald-300 tracking-wider block">Trabajador</span>
+                                            <strong id="card-front-name" class="text-sm font-extrabold leading-tight block">--</strong>
+                                        </div>
+                                        <div>
+                                            <span class="text-[9px] uppercase font-bold text-emerald-300 tracking-wider block">Número</span>
+                                            <strong id="card-front-num" class="text-xs font-mono bg-white/10 px-2 py-0.5 rounded">--</strong>
+                                        </div>
+                                        <div>
+                                            <span class="text-[9px] uppercase font-bold text-emerald-300 tracking-wider block">Área y Cargo</span>
+                                            <strong id="card-front-areacargo" class="text-xs text-emerald-100 block">--</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center text-[10px] text-emerald-300 border-t border-white/10 pt-2">
+                                    <span>Documento de Identidad Válido</span>
+                                    <span>Firma Autorizada CFE</span>
+                                </div>
+                            </div>
+
+                            <!-- REVERSO -->
+                            <div class="bg-slate-900 text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col justify-between h-72 border border-emerald-900">
+                                <div class="absolute top-4 right-4 text-[10px] bg-white/10 backdrop-blur-md px-3 py-1 rounded-full uppercase tracking-widest font-extrabold text-emerald-300">Reverso</div>
+                                <div class="grid grid-cols-3 gap-4 items-center">
+                                    <div class="col-span-2 space-y-2 text-xs">
+                                        <div>
+                                            <span class="text-[10px] text-emerald-400 uppercase font-bold block">Información Institucional</span>
+                                            <p class="text-[11px] text-slate-300 leading-tight">Sistema Central de Identificación Institucional y Control de Accesos CFE.</p>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800">
+                                            <div>
+                                                <span class="text-[9px] text-slate-400 uppercase font-bold block">No. Tarjeta</span>
+                                                <strong id="card-back-cardnum" class="font-mono text-xs text-emerald-400">--</strong>
+                                            </div>
+                                            <div>
+                                                <span class="text-[9px] text-slate-400 uppercase font-bold block">Vigencia</span>
+                                                <strong id="card-back-vigencia" class="text-xs text-emerald-300">--</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col items-center justify-center bg-white p-2.5 rounded-2xl shadow-md">
+                                        <div id="card-qr-container" class="w-20 h-20 flex items-center justify-center"></div>
+                                        <span class="text-[8px] font-black text-emerald-950 mt-1 uppercase tracking-tighter">QR CFE</span>
+                                    </div>
+                                </div>
+                                <p class="text-[9px] text-slate-400 text-center border-t border-slate-800 pt-2 leading-tight">En caso de pérdida o emergencia, favor de reportar inmediatamente a Recursos Humanos CFE.</p>
+                            </div>
+
+                        </div>
+
+                        <!-- Print Action -->
+                        <div class="flex justify-end pt-4 no-print">
+                            <button onclick="window.print()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-lg shadow-emerald-900/30 flex items-center space-x-2">
+                                <i class="fa-solid fa-print"></i>
+                                <span>Imprimir Credencial (Anverso y Reverso)</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 3: ESCANER / CONSULTA PÚBLICA -->
+                <section id="view-escaner" class="hidden space-y-6">
+                    <div class="max-w-xl mx-auto bg-white rounded-3xl shadow-sm border border-emerald-100 p-6 sm:p-8 space-y-6">
+                        <div class="text-center space-y-1">
+                            <div class="w-12 h-12 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-emerald-200">
+                                <i class="fa-solid fa-qrcode text-xl"></i>
+                            </div>
+                            <h3 class="text-xl font-extrabold text-emerald-950">Simulador de Escáner QR (Consulta Pública)</h3>
+                            <p class="text-xs text-slate-500">Verificación pública de validez institucional CFE.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Seleccionar Código QR de Trabajador:</label>
+                            <select id="select-qr-sim" onchange="simulateQRScan()" class="w-full bg-emerald-50/50 border border-emerald-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                                <!-- Dynamic options -->
+                            </select>
+                        </div>
+
+                        <!-- QR Public View Result Card -->
+                        <div id="qr-result-card" class="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-inner">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 4: NOTIFICACIONES AUTOMÁTICAS -->
+                <section id="view-notificaciones" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 space-y-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-emerald-950">Registro de Envío de Correos Electrónicos</h3>
+                            <p class="text-xs text-slate-500">Historial y estado de los correos transmitidos automáticamente vía Formspree.</p>
+                        </div>
+
+                        <div class="overflow-x-auto border border-emerald-100 rounded-xl">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-emerald-900 text-white text-xs uppercase font-bold border-b border-emerald-950">
+                                        <th class="p-3">Trabajador</th>
+                                        <th class="p-3">No. Trabajador / Tarjeta</th>
+                                        <th class="p-3">Tipo de Notificación</th>
+                                        <th class="p-3">Vigencia</th>
+                                        <th class="p-3">Estado Actualizado</th>
+                                        <th class="p-3">Correo Destino</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="notifications-tbody" class="divide-y divide-emerald-50 text-sm">
+                                    <!-- Dynamic notifications log -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 5: REPORTES -->
+                <section id="view-reportes" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 space-y-6">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
+                            <div>
+                                <h3 class="text-lg font-bold text-emerald-950">Reportes de Credencialización CFE</h3>
+                                <p class="text-xs text-slate-500">Consulta general, filtrado por área de adscripción y estado de credenciales.</p>
+                            </div>
+                            <button onclick="window.print()" class="bg-emerald-900 hover:bg-emerald-950 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition flex items-center space-x-2 shadow-md">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                <span>Exportar / Imprimir Reporte</span>
+                            </button>
+                        </div>
+
+                        <!-- Metrics Summary Cards -->
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                            <div class="bg-emerald-50/60 border border-emerald-200 p-4 rounded-2xl">
+                                <p class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Total Personal</p>
+                                <p id="stat-total-card" class="text-2xl font-black text-emerald-950 mt-1">0</p>
+                            </div>
+                            <div class="bg-emerald-100/70 border border-emerald-300 p-4 rounded-2xl">
+                                <p class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Vigentes</p>
+                                <p id="stat-vigentes-card" class="text-2xl font-black text-emerald-900 mt-1">0</p>
+                            </div>
+                            <div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl">
+                                <p class="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Inactivas</p>
+                                <p id="stat-inactivos-card" class="text-2xl font-black text-amber-800 mt-1">0</p>
+                            </div>
+                            <div class="bg-rose-50 border border-rose-200 p-4 rounded-2xl">
+                                <p class="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Vencidas</p>
+                                <p id="stat-vencidos-card" class="text-2xl font-black text-rose-800 mt-1">0</p>
+                            </div>
+                        </div>
+
+                        <!-- Filters for Report -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 no-print">
+                            <div>
+                                <label class="block text-xs font-semibold text-emerald-900 uppercase mb-1">Filtrar por Área de Adscripción:</label>
+                                <select id="report-filter-area" onchange="renderReport()" class="w-full bg-emerald-50/50 border border-emerald-200 rounded-xl px-3 py-2 text-sm text-emerald-900">
+                                    <option value="todas">Todas las áreas</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-emerald-900 uppercase mb-1">Filtrar por Estado de Credencial:</label>
+                                <select id="report-filter-status" onchange="renderReport()" class="w-full bg-emerald-50/50 border border-emerald-200 rounded-xl px-3 py-2 text-sm text-emerald-900">
+                                    <option value="todos">Todos los estados</option>
+                                    <option value="Vigente">Vigentes</option>
+                                    <option value="Inactiva">Inactivas</option>
+                                    <option value="Vencida">Vencidas</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Report Table -->
+                        <div class="overflow-x-auto border border-emerald-100 rounded-xl">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-emerald-900 text-white text-xs uppercase font-bold border-b border-emerald-950">
+                                        <th class="p-3">Trabajador</th>
+                                        <th class="p-3">Núm. Tarjeta</th>
+                                        <th class="p-3">Área de Adscripción</th>
+                                        <th class="p-3">Cargo</th>
+                                        <th class="p-3">Vigencia</th>
+                                        <th class="p-3">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-tbody" class="divide-y divide-emerald-50 text-sm">
+                                    <!-- Dynamic rows loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: REGISTRAR / EDITAR TRABAJADOR -->
+    <div id="worker-modal" class="fixed inset-0 bg-emerald-950/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50 overflow-y-auto no-print">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-emerald-100 my-8 space-y-6">
+            
+            <div class="flex justify-between items-center border-b border-emerald-100 pb-4">
+                <div>
+                    <h3 id="modal-title" class="text-xl font-bold text-emerald-950">Registrar Nuevo Trabajador</h3>
+                    <p class="text-xs text-slate-500">Ingresa los datos del trabajador CFE (Administración Autorizada).</p>
+                </div>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="worker-form" onsubmit="saveWorker(event)" class="space-y-4">
+                <input type="hidden" id="field-id">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Nombre Completo *</label>
+                        <input type="text" id="field-nombre" required placeholder="Ej. Ana López Pérez" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">CURP *</label>
+                        <input type="text" id="field-curp" required placeholder="18 Caracteres" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm uppercase focus:ring-2 focus:ring-emerald-600 focus:bg-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Edad *</label>
+                        <input type="number" id="field-edad" min="18" max="90" required placeholder="Ej. 28" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 focus:bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Sexo *</label>
+                        <select id="field-sexo" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 text-emerald-900">
+                            <option value="Femenino">Femenino</option>
+                            <option value="Masculino">Masculino</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Número de Teléfono *</label>
+                        <input type="tel" id="field-telefono" required placeholder="Ej. 961 123 4567" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">No. Trabajador *</label>
+                        <input type="text" id="field-numtrabajador" required placeholder="Ej. 1001" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">No. Tarjeta Único *</label>
+                        <input type="text" id="field-numtarjeta" required placeholder="Ej. T-9001" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Correo Electrónico *</label>
+                        <input type="email" id="field-correo" required placeholder="correo@cfe.gob.mx" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Área de Adscripción *</label>
+                        <input type="text" id="field-area" required placeholder="Ej. Distribución / Sistemas" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Cargo *</label>
+                        <input type="text" id="field-cargo" required placeholder="Ej. Ingeniero de Campo" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600">
+                    </div>
+                </div>
+
+                <!-- FECHAS DE INICIO Y VENCIMIENTO -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Fecha de Inicio</label>
+                        <input type="date" id="field-inicio" required class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Fecha de Vencimiento</label>
+                        <input type="date" id="field-vigencia" required class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Estado Credencial</label>
+                        <select id="field-estado" class="w-full px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 text-emerald-900">
+                            <option value="Vigente">Vigente</option>
+                            <option value="Inactiva">Inactiva</option>
+                            <option value="Vencida">Vencida</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Photo Upload / URL Section -->
+                <div>
+                    <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Fotografía del Trabajador</label>
+                    <div class="flex flex-col sm:flex-row items-center gap-3">
+                        <input type="text" id="field-foto-url" placeholder="URL de la imagen (https://...)" class="flex-1 px-3.5 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600">
+                        <span class="text-xs text-slate-400 font-bold uppercase">ó subir</span>
+                        <input type="file" id="field-foto-file" accept="image/*" onchange="handleFileUpload(event)" class="text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100">
+                    </div>
+                </div>
+
+                <!-- Footer Modal -->
+                <div class="flex justify-end space-x-3 border-t border-emerald-100 pt-4 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold rounded-xl text-sm transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition shadow-md shadow-emerald-700/20">Guardar Registro</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- APPLICATION LOGIC & JAVASCRIPT -->
+    <script>
+        // Formspree Endpoint URL
+        const FORMSPREE_URL = "https://formspree.io/f/xkjjyzqb";
+
+        // Lista vacía para agregar trabajadores desde cero
+        let workers = JSON.parse(localStorage.getItem('credencial_workers')) || [];
+        let notificationsLog = JSON.parse(localStorage.getItem('credencial_notifications')) || [];
+
+        // Toast notification system
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = type === 'success' ? 'bg-emerald-700 text-white' : 'bg-rose-600 text-white';
+            const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation';
+
+            toast.className = `${colors} px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-sm font-semibold pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Save to LocalStorage securely
+        function saveData() {
+            localStorage.setItem('credencial_workers', JSON.stringify(workers));
+            localStorage.setItem('credencial_notifications', JSON.stringify(notificationsLog));
+            updateMetrics();
+        }
+
+        // ENVÍO REAL DE CORREOS MEDIANTE FORMSPREE
+        function triggerNotification(worker, tipoNotif) {
+            const payload = {
+                trabajador: worker.nombre,
+                correo_destino: worker.correo,
+                num_trabajador: worker.numTrabajador,
+                num_tarjeta: worker.numTarjeta,
+                tipo_notificacion: tipoNotif,
+                vigencia: worker.vigencia,
+                estado_actualizado: getComputedStatus(worker),
+                mensaje: `Se ha procesado un evento de credencialización CFE: ${tipoNotif}. Estado: ${getComputedStatus(worker)}.`
+            };
+
+            fetch(FORMSPREE_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log("Notificación enviada con éxito vía Formspree");
+                    showToast(`Notificación enviada a ${worker.correo}`);
+                } else {
+                    console.error("Error al enviar con Formspree");
+                }
+            })
+            .catch(error => console.error("Error de red Formspree:", error));
+
+            notificationsLog.unshift({
+                nombre: worker.nombre,
+                numTrabajador: worker.numTrabajador,
+                numTarjeta: worker.numTarjeta,
+                tipo: tipoNotif,
+                vigencia: worker.vigencia,
+                estado: getComputedStatus(worker),
+                correo: worker.correo || "admin@cfe.gob.mx"
+            });
+            saveData();
+        }
+
+        // Limpiar datos
+        function clearAllData() {
+            if (confirm("¿Deseas eliminar todos los registros guardados?")) {
+                workers = [];
+                notificationsLog = [];
+                saveData();
+                renderTable();
+                showToast("Sistema limpiado con éxito.");
+            }
+        }
+
+        // Switch navigation tabs
+        function switchTab(tab) {
+            ['trabajadores', 'credenciales', 'escaner', 'notificaciones', 'reportes'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`nav-${t}`).classList.remove('bg-emerald-700', 'text-white', 'shadow-lg', 'shadow-emerald-900/40');
+                document.getElementById(`nav-${t}`).classList.add('text-emerald-100', 'hover:bg-emerald-900');
+            });
+
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`nav-${tab}`).classList.add('bg-emerald-700', 'text-white', 'shadow-lg', 'shadow-emerald-900/40');
+            document.getElementById(`nav-${tab}`).classList.remove('text-emerald-100', 'hover:bg-emerald-900');
+
+            const headers = {
+                trabajadores: "Administración de Trabajadores CFE",
+                credenciales: "Generador de Credenciales Digitales CFE",
+                escaner: "Escáner / Consulta Pública QR CFE",
+                notificaciones: "Notificaciones Automáticas por Correo",
+                reportes: "Reportes y Estadísticas Institucionales CFE"
+            };
+            document.getElementById('header-title').innerText = headers[tab];
+
+            if (tab === 'credenciales') populateCredentialSelect();
+            if (tab === 'escaner') populateQRSelect();
+            if (tab === 'notificaciones') renderNotificationsTable();
+            if (tab === 'reportes') renderReport();
+        }
+
+        // Update statistics metrics
+        function updateMetrics() {
+            document.getElementById('stat-total').innerText = workers.length;
+            if(document.getElementById('stat-total-card')) document.getElementById('stat-total-card').innerText = workers.length;
+            if(document.getElementById('stat-vigentes-card')) document.getElementById('stat-vigentes-card').innerText = workers.filter(w => getComputedStatus(w) === 'Vigente').length;
+            if(document.getElementById('stat-inactivos-card')) document.getElementById('stat-inactivos-card').innerText = workers.filter(w => getComputedStatus(w) === 'Inactiva').length;
+            if(document.getElementById('stat-vencidos-card')) document.getElementById('stat-vencidos-card').innerText = workers.filter(w => getComputedStatus(w) === 'Vencida').length;
+        }
+
+        // Calculate dynamic status based on date validation rules
+        function getComputedStatus(worker) {
+            if (worker.estado === 'Inactiva') return 'Inactiva';
+            const today = new Date().toISOString().split('T')[0];
+            if (worker.vigencia < today) return 'Vencida';
+            return 'Vigente';
+        }
+
+        // Render Workers Table
+        function renderTable() {
+            const tbody = document.getElementById('workers-tbody');
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const filterStatus = document.getElementById('filter-status').value;
+
+            tbody.innerHTML = '';
+
+            const filtered = workers.filter(w => {
+                const status = getComputedStatus(w);
+                const matchesSearch = w.nombre.toLowerCase().includes(search) ||
+                                      w.curp.toLowerCase().includes(search) ||
+                                      (w.telefono && w.telefono.includes(search)) ||
+                                      w.numTarjeta.toLowerCase().includes(search) ||
+                                      w.area.toLowerCase().includes(search);
+                const matchesStatus = filterStatus === 'todos' || status === filterStatus;
+                return matchesSearch && matchesStatus;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 font-medium">No hay trabajadores registrados. Haz clic en "Nuevo Trabajador" para comenzar.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(w => {
+                const status = getComputedStatus(w);
+                let badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                if (status === 'Inactiva') badgeClass = 'bg-amber-100 text-amber-800 border-amber-200';
+                if (status === 'Vencida') badgeClass = 'bg-rose-100 text-rose-800 border-rose-200';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-emerald-50/50 transition-all border-b border-emerald-50">
+                        <td class="py-3.5 px-4 flex items-center space-x-3">
+                            <img src="${w.foto || 'https://via.placeholder.com/150'}" onerror="this.src='https://via.placeholder.com/150'" class="w-10 h-10 rounded-xl object-cover border border-emerald-200 shadow-sm">
+                            <div>
+                                <p class="font-bold text-emerald-950">${w.nombre}</p>
+                                <p class="text-xs text-slate-400">ID System: #${w.id}</p>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="font-mono text-xs font-semibold text-emerald-900 block">${w.curp}</span>
+                            <span class="text-xs text-slate-500 font-medium"><i class="fa-solid fa-phone text-[10px] mr-1 text-emerald-600"></i>${w.telefono || 'Sin registro'}</span>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="text-xs font-semibold text-slate-700 block">No. ${w.numTrabajador}</span>
+                            <span class="font-mono text-xs text-emerald-700 font-bold">${w.numTarjeta}</span>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="font-semibold text-emerald-950 text-xs block">${w.area}</span>
+                            <span class="text-xs text-slate-500">${w.cargo}</span>
+                        </td>
+                        <td class="py-3.5 px-4 text-xs font-medium text-slate-600">
+                            Del ${w.inicio || 'N/A'} <br>Al ${w.vigencia}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}">
+                                ${status}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-center space-x-2">
+                            <button onclick="openModal(${w.id})" title="Editar datos" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition inline-flex items-center justify-center">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="toggleWorkerStatus(${w.id})" title="Activar/Desactivar" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition inline-flex items-center justify-center">
+                                <i class="fa-solid fa-power-off"></i>
+                            </button>
+                            <button onclick="deleteWorker(${w.id})" title="Eliminar" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition inline-flex items-center justify-center">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            updateMetrics();
+        }
+
+        // Toggle Active / Inactive status
+        function toggleWorkerStatus(id) {
+            const worker = workers.find(w => w.id === id);
+            if (worker) {
+                worker.estado = (worker.estado === 'Vigente' || worker.estado === 'Vencida') ? 'Inactiva' : 'Vigente';
+                
+                if(worker.estado === 'Inactiva') {
+                    triggerNotification(worker, "El administrador desactivó la credencial CFE");
+                }
+
+                saveData();
+                renderTable();
+                showToast(`Estado de ${worker.nombre} cambiado a ${worker.estado}.`);
+            }
+        }
+
+        // Modal Open / Close
+        function openModal(id = null) {
+            const modal = document.getElementById('worker-modal');
+            const form = document.getElementById('worker-form');
+            form.reset();
+
+            if (id) {
+                document.getElementById('modal-title').innerText = "Modificar Datos del Trabajador CFE";
+                const w = workers.find(x => x.id === id);
+                document.getElementById('field-id').value = w.id;
+                document.getElementById('field-nombre').value = w.nombre;
+                document.getElementById('field-curp').value = w.curp;
+                document.getElementById('field-edad').value = w.edad;
+                document.getElementById('field-sexo').value = w.sexo;
+                document.getElementById('field-telefono').value = w.telefono || "";
+                document.getElementById('field-numtrabajador').value = w.numTrabajador;
+                document.getElementById('field-numtarjeta').value = w.numTarjeta;
+                document.getElementById('field-correo').value = w.correo || "";
+                document.getElementById('field-area').value = w.area;
+                document.getElementById('field-cargo').value = w.cargo;
+                document.getElementById('field-inicio').value = w.inicio || "";
+                document.getElementById('field-vigencia').value = w.vigencia;
+                document.getElementById('field-estado').value = w.estado;
+                document.getElementById('field-foto-url').value = w.foto;
+            } else {
+                document.getElementById('modal-title').innerText = "Registrar Nuevo Trabajador CFE";
+                document.getElementById('field-id').value = '';
+                document.getElementById('field-inicio').value = new Date().toISOString().split('T')[0];
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('worker-modal').classList.add('hidden');
+        }
+
+        // Handle Image File Upload (Convert to Base64)
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('field-foto-url').value = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Save / Update Worker with Card Duplication Validation
+        function saveWorker(e) {
+            e.preventDefault();
+            const id = document.getElementById('field-id').value;
+            const numTarjeta = document.getElementById('field-numtarjeta').value.trim();
+
+            const isDuplicate = workers.some(w => w.numTarjeta.toLowerCase() === numTarjeta.toLowerCase() && w.id != id);
+            if (isDuplicate) {
+                showToast(`Error: El número de tarjeta "${numTarjeta}" ya existe en el sistema CFE.`, 'error');
+                return;
+            }
+
+            const workerData = {
+                id: id ? parseInt(id) : Date.now(),
+                nombre: document.getElementById('field-nombre').value.trim(),
+                curp: document.getElementById('field-curp').value.trim().toUpperCase(),
+                edad: parseInt(document.getElementById('field-edad').value),
+                sexo: document.getElementById('field-sexo').value,
+                telefono: document.getElementById('field-telefono').value.trim(),
+                numTrabajador: document.getElementById('field-numtrabajador').value.trim(),
+                numTarjeta: numTarjeta,
+                correo: document.getElementById('field-correo').value.trim(),
+                area: document.getElementById('field-area').value.trim(),
+                cargo: document.getElementById('field-cargo').value.trim(),
+                inicio: document.getElementById('field-inicio').value,
+                vigencia: document.getElementById('field-vigencia').value,
+                estado: document.getElementById('field-estado').value,
+                foto: document.getElementById('field-foto-url').value.trim() || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+            };
+
+            if (id) {
+                const index = workers.findIndex(w => w.id == id);
+                const oldVigencia = workers[index].vigencia;
+                workers[index] = workerData;
+                
+                if(oldVigencia !== workerData.vigencia) {
+                    triggerNotification(workerData, "Modificación de fecha de vencimiento CFE");
+                } else {
+                    triggerNotification(workerData, "Actualización de información administrativa CFE");
+                }
+                showToast("Datos actualizados correctamente.");
+            } else {
+                workers.push(workerData);
+                triggerNotification(workerData, "Generación de nueva credencial CFE");
+                showToast("Nuevo trabajador registrado exitosamente y notificación enviada.");
+            }
+
+            saveData();
+            renderTable();
+            closeModal();
+        }
+
+        // Delete Worker
+        function deleteWorker(id) {
+            if (confirm("¿Estás seguro de eliminar este registro permanentemente del sistema CFE?")) {
+                workers = workers.filter(w => w.id !== id);
+                saveData();
+                renderTable();
+                showToast("Registro eliminado.");
+            }
+        }
+
+        // Populate Select dropdown for Digital Cards
+        function populateCredentialSelect() {
+            const select = document.getElementById('select-credential-worker');
+            select.innerHTML = '';
+            
+            if(workers.length === 0) {
+                select.innerHTML = `<option value="">No hay trabajadores registrados</option>`;
+                return;
+            }
+
+            workers.forEach(w => {
+                select.innerHTML += `<option value="${w.id}">${w.nombre} (${w.area} - Card: ${w.numTarjeta})</option>`;
+            });
+            renderDigitalCard();
+        }
+
+        // Render Front & Back Digital Credentials
+        function renderDigitalCard() {
+            const id = document.getElementById('select-credential-worker').value;
+            const w = workers.find(x => x.id == id);
+            
+            if (!w) {
+                document.getElementById('card-front-name').innerText = "--";
+                document.getElementById('card-front-num').innerText = "--";
+                document.getElementById('card-front-areacargo').innerText = "--";
+                document.getElementById('card-back-cardnum').innerText = "--";
+                document.getElementById('card-back-vigencia').innerText = "--";
+                document.getElementById('card-qr-container').innerHTML = "";
+                return;
+            }
+
+            const status = getComputedStatus(w);
+
+            document.getElementById('card-front-photo').src = w.foto;
+            document.getElementById('card-front-name').innerText = w.nombre;
+            document.getElementById('card-front-num').innerText = w.numTrabajador;
+            document.getElementById('card-front-areacargo').innerText = `${w.area} / ${w.cargo}`;
+
+            const badge = document.getElementById('card-front-badge');
+            badge.innerText = status.toUpperCase();
+            if (status === 'Vigente') badge.className = "absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase shadow bg-emerald-500 text-white";
+            else if (status === 'Inactiva') badge.className = "absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase shadow bg-amber-500 text-white";
+            else badge.className = "absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase shadow bg-rose-500 text-white";
+
+            document.getElementById('card-back-cardnum').innerText = w.numTarjeta;
+            document.getElementById('card-back-vigencia').innerText = w.vigencia;
+
+            // Generate Dynamic QR Code
+            const qrContainer = document.getElementById('card-qr-container');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: JSON.stringify({ id: w.id, tarjeta: w.numTarjeta, status: status }),
+                width: 75,
+                height: 75,
+                colorDark : "#064e3b",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+
+        // Populate Select for QR Scanner Simulator
+        function populateQRSelect() {
+            const select = document.getElementById('select-qr-sim');
+            select.innerHTML = '';
+            
+            if(workers.length === 0) {
+                select.innerHTML = `<option value="">No hay trabajadores registrados</option>`;
+                document.getElementById('qr-result-card').innerHTML = `<div class="p-8 text-center text-slate-400 font-bold">Sin registros para escanear.</div>`;
+                return;
+            }
+
+            workers.forEach(w => {
+                select.innerHTML += `<option value="${w.id}">${w.nombre} [QR Token: ${w.numTarjeta}]</option>`;
+            });
+            simulateQRScan();
+        }
+
+        // Simulate Public QR Scan Screen (CURP y datos de emergencia ocultos)
+        function simulateQRScan() {
+            const id = document.getElementById('select-qr-sim').value;
+            const w = workers.find(x => x.id == id);
+            const container = document.getElementById('qr-result-card');
+
+            if (!w) {
+                container.innerHTML = `<div class="p-8 text-center text-rose-600 font-bold">Credencial no encontrada en el sistema CFE.</div>`;
+                return;
+            }
+
+            const status = getComputedStatus(w);
+            let statusBadge = `<span class="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full text-xs">VIGENTE / AUTÉNTICA</span>`;
+            if (status === 'Inactiva') statusBadge = `<span class="bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded-full text-xs">INACTIVA</span>`;
+            if (status === 'Vencida') statusBadge = `<span class="bg-rose-100 text-rose-800 font-bold px-3 py-1 rounded-full text-xs">EXPIRED / VENCIDA</span>`;
+
+            container.innerHTML = `
+                <div class="bg-emerald-950 text-white p-6 text-center border-b border-emerald-900">
+                    <span class="text-[10px] uppercase font-bold tracking-widest text-emerald-300 block mb-1">Verificación Oficial de Credencial CFE</span>
+                    <h4 class="text-lg font-extrabold">${w.nombre}</h4>
+                    <div class="mt-2">${statusBadge}</div>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="flex items-center space-x-4 border-b border-emerald-100 pb-4">
+                        <img src="${w.foto}" class="w-20 h-24 object-cover rounded-xl border-2 border-emerald-600 shadow-md">
+                        <div class="space-y-1 text-sm">
+                            <p><span class="text-slate-400 text-xs block">Número de Trabajador</span> <strong class="text-emerald-950">${w.numTrabajador}</strong></p>
+                            <p><span class="text-slate-400 text-xs block">Área & Cargo</span> <strong class="text-emerald-950">${w.area} - ${w.cargo}</strong></p>
+                            <p><span class="text-slate-400 text-xs block">No. Tarjeta Único</span> <strong class="text-emerald-700 font-mono">${w.numTarjeta}</strong></p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 text-xs text-slate-600">
+                        <div class="flex justify-between py-1 border-b border-emerald-50">
+                            <span>Vigencia Autorizada:</span>
+                            <span class="font-bold text-emerald-950">Del ${w.inicio || 'N/A'} al ${w.vigencia}</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-emerald-50">
+                            <span>Estado de Validez:</span>
+                            <span class="font-bold text-emerald-950">${status}</span>
+                        </div>
+                    </div>
+
+                    <!-- PRIVACY NOTICE FOR PUBLIC CHECK -->
+                    <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-[11px] text-emerald-900 leading-relaxed flex items-start space-x-2">
+                        <i class="fa-solid fa-user-shield text-emerald-700 mt-0.5"></i>
+                        <span><strong>Nota de Privacidad CFE:</strong> Por seguridad y normativa del sistema, <u>la CURP completa y los datos de contacto de emergencia están ocultos</u> en esta consulta pública QR.</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render Notifications Table
+        function renderNotificationsTable() {
+            const tbody = document.getElementById('notifications-tbody');
+            tbody.innerHTML = '';
+            
+            if(notificationsLog.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">No hay notificaciones registradas.</td></tr>`;
+                return;
+            }
+
+            notificationsLog.forEach(n => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-emerald-50/50 border-b border-emerald-50 text-xs">
+                        <td class="p-3 font-bold text-emerald-950">${n.nombre}</td>
+                        <td class="p-3 font-mono text-slate-600">#${n.numTrabajador} / <span class="text-emerald-700">${n.numTarjeta}</span></td>
+                        <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded border border-emerald-200">${n.tipo}</span></td>
+                        <td class="p-3 text-slate-600">${n.vigencia}</td>
+                        <td class="p-3 font-bold text-slate-700">${n.estado}</td>
+                        <td class="p-3 text-slate-500 italic">${n.correo}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Render Interactive Reports
+        function renderReport() {
+            const areaFilter = document.getElementById('report-filter-area').value;
+            const statusFilter = document.getElementById('report-filter-status').value;
+            const tbody = document.getElementById('report-tbody');
+
+            const areaSelect = document.getElementById('report-filter-area');
+            const areas = [...new Set(workers.map(w => w.area))];
+            
+            const currentAreaVal = areaSelect.value;
+            areaSelect.innerHTML = `<option value="todas">Todas las áreas</option>`;
+            areas.forEach(a => {
+                areaSelect.innerHTML += `<option value="${a}">${a}</option>`;
+            });
+            areaSelect.value = currentAreaVal || "todas";
+
+            tbody.innerHTML = '';
+
+            const filtered = workers.filter(w => {
+                const status = getComputedStatus(w);
+                const matchesArea = areaFilter === 'todas' || w.area === areaFilter;
+                const matchesStatus = statusFilter === 'todos' || status === statusFilter;
+                return matchesArea && matchesStatus;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">No se encontraron trabajadores para este reporte.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(w => {
+                const status = getComputedStatus(w);
+                let color = 'text-emerald-700';
+                if (status === 'Inactiva') color = 'text-amber-600';
+                if (status === 'Vencida') color = 'text-rose-600';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-emerald-50/50 border-b border-emerald-50">
+                        <td class="p-3 font-bold text-emerald-950">${w.nombre}</td>
+                        <td class="p-3 font-mono text-emerald-700 font-semibold text-xs">${w.numTarjeta}</td>
+                        <td class="p-3 text-slate-600">${w.area}</td>
+                        <td class="p-3 text-slate-600">${w.cargo}</td>
+                        <td class="p-3 text-slate-600">${w.vigencia}</td>
+                        <td class="p-3 font-bold ${color}">${status}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Initial Load Event
+        window.onload = function() {
+            renderTable();
+        };
+    </script>
+</body>
+</html>
